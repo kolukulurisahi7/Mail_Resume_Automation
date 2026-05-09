@@ -1,0 +1,17 @@
+# Sensitive files
+credentials.json
+token.json
+
+# Python environment
+.venv/
+__pycache__/
+*.pyc
+
+# System / IDE files
+.DS_Store
+.idea/
+
+# Output files
+Tailored_Resume_RAW.docx
+Sasank_Talluri.docx
+_temp/

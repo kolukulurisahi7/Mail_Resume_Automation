@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JD Resume Builder</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>JD Resume Builder</h1>
+            <p>Streamline your job application process.</p>
+        </header>
+
+        <main>
+            <!-- Section 1: JD Email Drafter -->
+            <section class="card">
+                <h2>1. Job Description & Email Draft</h2>
+                <div class="input-group">
+                    <textarea id="jdInput" placeholder="Paste the Job Description here..."></textarea>
+                </div>
+                <div class="actions">
+                    <button id="draftEmailBtn" class="primary-btn">Draft Email to Recruiter</button>
+                </div>
+                <div id="draftStatus" class="status-msg"></div>
+            </section>
+
+            <!-- Section 2: JSON Resume Data -->
+            <section class="card">
+                <h2>2. Resume Data (JSON)</h2>
+                <div class="input-group">
+                    <textarea id="jsonInput" placeholder="Paste your resume JSON content here..."></textarea>
+                </div>
+                <div class="actions">
+                    <button id="generateResumeBtn" class="secondary-btn">Update & Generate Resume</button>
+                </div>
+                <div id="generateStatus" class="status-msg"></div>
+            </section>
+        </main>
+    </div>
+    <script src="/static/script.js"></script>
+</body>
+</html>
