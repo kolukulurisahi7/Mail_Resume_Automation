@@ -66,9 +66,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        setStatus(generateStatus, 'Generating resume and opening Finder...', 'loading');
+        setStatus(generateStatus, 'Generating resume...', 'loading');
 
         try {
+            console.log('[DEBUG] Sending resume generation request...');
+            
             const response = await fetch('/api/generate-resume', {
                 method: 'POST',
                 headers: {
@@ -77,14 +79,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ json_content: jsonObj }),
             });
 
-            const data = await response.json();
-
             if (!response.ok) {
-                throw new Error(data.detail || 'Failed to generate resume');
+                // Try to parse error as JSON
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || errorData.error || 'Failed to generate resume');
             }
 
-            setStatus(generateStatus, 'Success! Resume generated.', 'success');
+            // Response is a DOCX file blob
+            console.log('[DEBUG] Resume generated successfully. Starting download...');
+            const blob = await response.blob();
+            console.log('[DEBUG] Blob received, size:', blob.size);
+            
+            // Create download link and trigger download
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'Sahi_Kolukuluri.docx';
+            document.body.appendChild(a);
+            a.click();
+            console.log('[DEBUG] Download triggered');
+            
+            // Cleanup
+            a.remove();
+            window.URL.revokeObjectURL(url);
+            
+            setStatus(generateStatus, 'Success! Resume downloaded.', 'success');
         } catch (error) {
+            console.error('[DEBUG] Error:', error.message);
             setStatus(generateStatus, `Error: ${error.message}`, 'error');
         }
     });

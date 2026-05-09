@@ -167,12 +167,23 @@ async def generate_resume(request: ResumeRequest):
             file_path = output_line.split("✓ Rendered OK:")[1].strip()
             print(f"[DEBUG] Generated file: {file_path}")
             
-            # Return success with file path (don't try to open Finder on serverless)
-            return {
-                "status": "success", 
-                "message": "Resume generated successfully", 
-                "path": file_path
-            }
+            # 5. Return the generated DOCX file as a downloadable response
+            output_file = Path(file_path)
+            print(f"[DEBUG] Output file path: {output_file}")
+            print(f"[DEBUG] Output file exists: {output_file.exists()}")
+            
+            if not output_file.exists():
+                return {
+                    "success": False,
+                    "error": f"Generated resume not found: {output_file}"
+                }
+            
+            print(f"[DEBUG] Starting download: {output_file}")
+            return FileResponse(
+                path=str(output_file),
+                filename="Sahi_Kolukuluri.docx",
+                media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
         else:
             print(f"[DEBUG] Could not find output line in stdout")
             raise HTTPException(status_code=500, detail="Could not determine output file path from script execution.")
