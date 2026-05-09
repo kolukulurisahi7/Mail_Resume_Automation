@@ -24,17 +24,19 @@ class ResumeRequest(BaseModel):
 # Constants - Safe path handling for Vercel deployment
 BASE_DIR = Path.cwd()
 TEMPLATE_PATH = BASE_DIR / "templates" / "resume_template.docx"
-JSON_PATH = BASE_DIR / "data" / "base_content.json"
+JSON_PATH = BASE_DIR / "data" / "base_content.json"  # READ-ONLY input
 RENDER_SCRIPT = BASE_DIR / "test_render.py"
 
-# Use /tmp for output on Vercel, local for development
+# Use /tmp for output and temp files on Vercel, local for development
 OUTPUT_DIR = Path("/tmp/generated_resumes")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+TMP_JSON_PATH = Path("/tmp/resume_data.json")  # Writable temp JSON for rendering
 
 print(f"[DEBUG] CWD: {Path.cwd()}")
 print(f"[DEBUG] Template path: {TEMPLATE_PATH}")
 print(f"[DEBUG] JSON path: {JSON_PATH}")
 print(f"[DEBUG] Output dir: {OUTPUT_DIR}")
+print(f"[DEBUG] Temp JSON path: {TMP_JSON_PATH}")
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
@@ -126,19 +128,31 @@ async def generate_resume(request: ResumeRequest):
         if not JSON_PATH.exists():
             return {"error": f"JSON not found: {JSON_PATH}"}
         
-        # 2. Update JSON with request content
-        print(f"[DEBUG] Writing JSON to: {JSON_PATH}")
-        with open(JSON_PATH, "w") as f:
-            json.dump(request.json_content, f, indent=4)
+        # 2. Read base JSON and merge with request content (avoid writing to read-only data/)
+        print(f"[DEBUG] Reading base JSON from: {JSON_PATH}")
+        with open(JSON_PATH, "r") as f:
+            base_content = json.load(f)
         
-        # 3. Run test_render.py
+        # Merge request content with base content
+        merged_content = {**base_content, **request.json_content}
+        
+        # Write merged content to /tmp (writable on Vercel)
+        print(f"[DEBUG] Writing merged JSON to /tmp: {TMP_JSON_PATH}")
+        with open(TMP_JSON_PATH, "w") as f:
+            json.dump(merged_content, f, indent=4)
+        
+        # 3. Run test_render.py with environment variable pointing to /tmp JSON
         print(f"[DEBUG] Running render script: {RENDER_SCRIPT}")
+        env = os.environ.copy()
+        env["RESUME_DATA_PATH"] = str(TMP_JSON_PATH)  # Tell script where to read JSON
+        
         result = subprocess.run(
             ["python3", str(RENDER_SCRIPT)], 
             capture_output=True, 
             text=True, 
             check=True,
-            cwd=str(BASE_DIR)
+            cwd=str(BASE_DIR),
+            env=env
         )
         
         print(f"[DEBUG] Script stdout: {result.stdout}")

@@ -15,7 +15,16 @@ from docx.enum.text import WD_LINE_SPACING, WD_ALIGN_PARAGRAPH
 # --------------------------
 BASE_DIR = Path.cwd()
 TEMPLATE_PATH = BASE_DIR / "templates" / "resume_template.docx"
-JSON_PATH = BASE_DIR / "data" / "base_content.json"
+
+# JSON path: Check environment variable first (for /tmp on Vercel), fall back to data/
+# This allows Vercel to write to /tmp instead of read-only data/ folder
+JSON_PATH_ENV = os.environ.get("RESUME_DATA_PATH")
+if JSON_PATH_ENV:
+    JSON_PATH = Path(JSON_PATH_ENV)
+    print(f"[DEBUG] Using JSON path from env: {JSON_PATH}")
+else:
+    JSON_PATH = BASE_DIR / "data" / "base_content.json"
+    print(f"[DEBUG] Using default JSON path: {JSON_PATH}")
 
 # Use /tmp for output on Vercel, local for development
 # Vercel serverless doesn't allow persistent file writes outside /tmp
