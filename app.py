@@ -71,19 +71,20 @@ async def draft_email(request: JDEmailRequest):
     # Generic Template
     body_template = """Hi,
 
-This is Sasank Talluri, a Senior Java Developer with over a decade of experience in Java, Spring Boot, Microservices, AWS, React, Angular, and DevOps. I have worked across banking, healthcare, and retail domains, delivering scalable and cloud-based solutions.
+This is Sahi K, a Senior Java Developer with over a decade of experience in Java, Spring Boot, Microservices, AWS, React, Angular, and DevOps. I have worked across telecom, banking, healthcare, and retail domains, delivering scalable and cloud-based solutions.
 
 I am currently available for C2C opportunities and open to relocation. Please find my resume attached for your review.  
 
 Visa: H1B
 Total Experience: 10+
-LinkedIn: https://www.linkedin.com/in/sasankt/
+LinkedIn: www.linkedin.com/in/sahi-javadeveloper
+
 
 
 Best regards,
-Sasank Talluri
-📧 sasanktalluri5@gmail.com
-📞 (984) 225-5569
+Sahi Kolukuluri
+📧 kolukulurisahi7@gmail.com
+📞 +1(919)-893-9289
 
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 Job Description Reference:
@@ -98,7 +99,7 @@ Job Description Reference:
     base_url = "https://mail.google.com/mail/?view=cm&fs=1"
     params = {
         "to": recipient,
-        "cc": "shekar@stemsolllc.com",
+        "cc": "zoya@stemsolllc.com",
         "su": subject,
         "body": body
     }
