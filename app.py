@@ -1,7 +1,7 @@
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
 import re
 import subprocess
@@ -21,10 +21,20 @@ class JDEmailRequest(BaseModel):
 class ResumeRequest(BaseModel):
     json_content: dict
 
-# Constants
-BASE_DIR = Path(__file__).parent.resolve()
-JSON_PATH = BASE_DIR / "data/base_content.json"
+# Constants - Safe path handling for Vercel deployment
+BASE_DIR = Path.cwd()
+TEMPLATE_PATH = BASE_DIR / "templates" / "resume_template.docx"
+JSON_PATH = BASE_DIR / "data" / "base_content.json"
 RENDER_SCRIPT = BASE_DIR / "test_render.py"
+
+# Use /tmp for output on Vercel, local for development
+OUTPUT_DIR = Path("/tmp/generated_resumes")
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+print(f"[DEBUG] CWD: {Path.cwd()}")
+print(f"[DEBUG] Template path: {TEMPLATE_PATH}")
+print(f"[DEBUG] JSON path: {JSON_PATH}")
+print(f"[DEBUG] Output dir: {OUTPUT_DIR}")
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
@@ -103,35 +113,62 @@ Job Description Reference:
 @app.post("/api/generate-resume")
 async def generate_resume(request: ResumeRequest):
     try:
-        # 1. Update JSON
+        # 1. Validate input files exist
+        print(f"[DEBUG] Checking template: {TEMPLATE_PATH}")
+        print(f"[DEBUG] Template exists: {TEMPLATE_PATH.exists()}")
+        
+        if not TEMPLATE_PATH.exists():
+            return {"error": f"Template not found: {TEMPLATE_PATH}"}
+        
+        print(f"[DEBUG] Checking JSON: {JSON_PATH}")
+        print(f"[DEBUG] JSON exists: {JSON_PATH.exists()}")
+        
+        if not JSON_PATH.exists():
+            return {"error": f"JSON not found: {JSON_PATH}"}
+        
+        # 2. Update JSON with request content
+        print(f"[DEBUG] Writing JSON to: {JSON_PATH}")
         with open(JSON_PATH, "w") as f:
             json.dump(request.json_content, f, indent=4)
         
-        # 2. Run test_render.py
+        # 3. Run test_render.py
+        print(f"[DEBUG] Running render script: {RENDER_SCRIPT}")
         result = subprocess.run(
             ["python3", str(RENDER_SCRIPT)], 
             capture_output=True, 
             text=True, 
-            check=True
+            check=True,
+            cwd=str(BASE_DIR)
         )
         
-        # 3. Find the output path from stdout or logs
+        print(f"[DEBUG] Script stdout: {result.stdout}")
+        if result.stderr:
+            print(f"[DEBUG] Script stderr: {result.stderr}")
+        
+        # 4. Find the output path from stdout or logs
         # The script prints: "✓ Rendered OK: /path/to/file.docx"
         output_line = next((line for line in result.stdout.splitlines() if "✓ Rendered OK:" in line), None)
         
         if output_line:
             file_path = output_line.split("✓ Rendered OK:")[1].strip()
+            print(f"[DEBUG] Generated file: {file_path}")
             
-            # 4. Reveal in Finder
-            subprocess.run(["open", "-R", file_path])
-            return {"status": "success", "message": "Resume generated and opened in Finder", "path": file_path}
+            # Return success with file path (don't try to open Finder on serverless)
+            return {
+                "status": "success", 
+                "message": "Resume generated successfully", 
+                "path": file_path
+            }
         else:
-             raise HTTPException(status_code=500, detail="Could not determine output file path from script execution.")
+            print(f"[DEBUG] Could not find output line in stdout")
+            raise HTTPException(status_code=500, detail="Could not determine output file path from script execution.")
 
     except subprocess.CalledProcessError as e:
         error_msg = f"Script execution failed.\nStdout: {e.stdout}\nStderr: {e.stderr}"
+        print(f"[DEBUG] Error: {error_msg}")
         raise HTTPException(status_code=500, detail=error_msg)
     except Exception as e:
+        print(f"[DEBUG] Exception: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":

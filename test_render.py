@@ -11,20 +11,28 @@ from docx.shared import Pt
 from docx.enum.text import WD_LINE_SPACING, WD_ALIGN_PARAGRAPH
 
 # --------------------------
-# Paths
+# Paths - Safe handling for Vercel deployment
 # --------------------------
-TEMPLATE_PATH = Path("templates/resume_template.docx")
-JSON_PATH = Path("data/base_content.json")
+BASE_DIR = Path.cwd()
+TEMPLATE_PATH = BASE_DIR / "templates" / "resume_template.docx"
+JSON_PATH = BASE_DIR / "data" / "base_content.json"
 
-# Base folder where numbered subfolders will be created
-# This saves inside: Mail-Resume_Automation-main/generated_resumes/
-BASE_FOLDER = Path("generated_resumes")
+# Use /tmp for output on Vercel, local for development
+# Vercel serverless doesn't allow persistent file writes outside /tmp
+BASE_FOLDER = Path("/tmp/generated_resumes")
+BASE_FOLDER.mkdir(parents=True, exist_ok=True)
 
 # Resume final filename
 FINAL_FILENAME = "Sahi_Kolukuluri.docx"
 
 # Temporary debug file
 OUTPUT_RAW = Path("Tailored_Resume_RAW.docx")  # saved right after docxtpl render
+
+# Debug logging
+print(f"[DEBUG] CWD: {BASE_DIR}")
+print(f"[DEBUG] Template path: {TEMPLATE_PATH}")
+print(f"[DEBUG] JSON path: {JSON_PATH}")
+print(f"[DEBUG] Output dir: {BASE_FOLDER}")
 
 # --------------------------
 # Helpers
@@ -175,37 +183,46 @@ def get_next_subfolder(base: Path) -> Path:
 
 def main():
     """Main resume generation logic."""
+    print(f"[DEBUG] Checking template existence: {TEMPLATE_PATH.exists()}")
     if not TEMPLATE_PATH.exists():
-        print(f"Template not found: {TEMPLATE_PATH.resolve()}")
+        print(f"Error: Template not found: {TEMPLATE_PATH.resolve()}")
         sys.exit(1)
 
+    print(f"[DEBUG] Checking JSON existence: {JSON_PATH.exists()}")
     if not JSON_PATH.exists():
-        print(f"JSON not found: {JSON_PATH.resolve()}")
+        print(f"Error: JSON not found: {JSON_PATH.resolve()}")
         sys.exit(1)
 
+    print(f"[DEBUG] Loading JSON from: {JSON_PATH}")
     with JSON_PATH.open("r", encoding="utf-8") as f:
         ctx = json.load(f)
 
     # --------------------------
-    # Prepare numbered folder
+    # Prepare numbered folder (inside /tmp for Vercel compatibility)
     # --------------------------
+    print(f"[DEBUG] Creating subfolder in: {BASE_FOLDER}")
     target_folder = get_next_subfolder(BASE_FOLDER)
     target_folder.mkdir(parents=True, exist_ok=True)
+    print(f"[DEBUG] Target folder: {target_folder}")
 
     # Define final paths inside that folder
     output_raw = target_folder / "Tailored_Resume_RAW.docx"
     output_final = target_folder / FINAL_FILENAME
+    print(f"[DEBUG] Output paths - Raw: {output_raw}, Final: {output_final}")
 
     # --------------------------
     # Render raw template
     # --------------------------
+    print(f"[DEBUG] Rendering template...")
     doc = DocxTemplate(str(TEMPLATE_PATH))
     doc.render(ctx)
     doc.save(str(output_raw))
+    print(f"[DEBUG] Raw document saved to: {output_raw}")
 
     # --------------------------
     # Post-process final document
     # --------------------------
+    print(f"[DEBUG] Post-processing document...")
     d = Document(str(output_raw))
 
     # First normalize bullets because this may rewrite bullet paragraph text
@@ -220,9 +237,10 @@ def main():
             tighten_list_paragraph(p)
 
     d.save(str(output_final))
+    print(f"[DEBUG] Final document saved to: {output_final}")
 
     print(f"✓ Rendered OK: {output_final.resolve()}")
-    print(f"  Raw pre-fix version at: {output_raw.resolve()}")
+    print(f"[DEBUG] Raw pre-fix version at: {output_raw.resolve()}")
 
 
 if __name__ == "__main__":
